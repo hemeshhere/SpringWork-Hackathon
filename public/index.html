@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Vendor Request Queue</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Vendor Request Queue</h1>
+    <p class="subtitle">REQUESTED &rarr; ASSIGNED &rarr; IN_PROGRESS &rarr; COMPLETED</p>
+    <div class="tool-actions"><button id="reset-data-btn" type="button" title="Testing utility — not part of the app under test">↺ Reset data</button><a id="spec-link" href="/spec" target="_blank" rel="noopener" title="Testing utility — not part of the app under test">📋 Spec</a><a id="openapi-link" href="/openapi.json" target="_blank" rel="noopener" title="Testing utility — not part of the app under test">📥 API collection</a></div>
+  </header>
+
+  <div id="app-section">
+    <main>
+      <section class="new-request">
+        <h2>New Request</h2>
+        <form id="new-request-form">
+          <select id="new-checkType">
+            <option value="IDENTITY">IDENTITY</option>
+            <option value="EDUCATION">EDUCATION</option>
+            <option value="EMPLOYMENT">EMPLOYMENT</option>
+            <option value="ADDRESS">ADDRESS</option>
+          </select>
+          <input id="new-candidateName" type="text" placeholder="Candidate name" />
+          <button type="submit">Create</button>
+        </form>
+      </section>
+
+      <div class="board" id="board"></div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+  <script>window.SV_APP_ID='08';window.SV_SCOREBOARD='https://sv-qa-scoreboard.onrender.com';</script>
+  <script src="report-widget.js"></script>
+</body>
+</html>
