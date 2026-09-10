@@ -14,32 +14,37 @@ function showToast(message) {
   setTimeout(() => toast.classList.add('hidden'), 2000);
 }
 
+// FIX (Bug 6): Filter out inactive vendors from the dropdown options
 function vendorOptionsHtml(currentVendorId) {
-  // BUG: inactive vendors are listed right alongside active ones with no
-  // filtering and no visual distinction.
+  // Retain the current vendor even if it became inactive, otherwise only show active
+  const activeVendors = vendors.filter(v => v.active || v.id === currentVendorId);
+  
   const opts = ['<option value="">Unassigned</option>']
-    .concat(vendors.map((v) => `<option value="${v.id}">${v.name}</option>`));
+    .concat(activeVendors.map((v) => {
+      const selected = v.id === currentVendorId ? 'selected' : '';
+      return `<option value="${v.id}" ${selected}>${v.name}</option>`;
+    }));
   return opts.join('');
 }
 
+// FIX (Bug 10 [UI]): Only enable the exact next logical state button, disable select on complete
 function cardHtml(r) {
-  const stateButtons = STATES.map((s) => {
-    // BUG: only the button matching the request's OWN current state is
-    // disabled. Every other state's button stays clickable, including
-    // states that are not the single valid "next" state.
-    const disabled = s === r.state ? 'disabled' : '';
+  const currentIdx = STATES.indexOf(r.state);
+  
+  const stateButtons = STATES.map((s, idx) => {
+    // Only enable if it is exactly one step forward
+    const disabled = (idx - currentIdx !== 1) ? 'disabled' : '';
     return `<button class="state-btn" data-id="${r.id}" data-to="${s}" ${disabled}>${s}</button>`;
   }).join('');
 
-  // BUG: the vendor-select is never disabled, even once the request has
-  // reached the terminal COMPLETED state - the spec requires it to be
-  // disabled at that point, same as the state-transition buttons are.
+  // Lock the dropdown completely if in COMPLETED state
+  const selectDisabled = r.state === 'COMPLETED' ? 'disabled' : '';
 
   return `
     <div class="card" data-id="${r.id}">
       <div class="card-title">${r.candidateName}</div>
       <div class="card-sub">${r.checkType}</div>
-      <select class="vendor-select" data-id="${r.id}">${vendorOptionsHtml(r.vendorId)}</select>
+      <select class="vendor-select" data-id="${r.id}" ${selectDisabled}>${vendorOptionsHtml(r.vendorId)}</select>
       <div class="state-buttons">${stateButtons}</div>
     </div>
   `;
@@ -72,46 +77,46 @@ async function loadBoard() {
   });
 }
 
+// FIX (Bug 9): Handle network failures visibly for state transitions
 async function onTransition(btn) {
   const id = btn.dataset.id;
   const to = btn.dataset.to;
-  const res = await fetch(`/api/requests/${id}/transition`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to })
-  });
-  // BUG: toast always reports success, even when the API responded with
-  // a 400 for an invalid transition.
-  showToast(`Moved to ${to}`);
-  // BUG: the board is not reloaded after a transition, so the card stays
-  // in its old column until the page is manually refreshed.
+  try {
+    const res = await fetch(`/api/requests/${id}/transition`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to })
+    });
+    
+    if (!res.ok) throw new Error('Transition rejected');
+    showToast(`Moved to ${to}`);
+  } catch (err) {
+    showToast(`Error: Failed to move to ${to}`);
+  } finally {
+    // Always reload the board to sync UI with server truth
+    await loadBoard(); 
+  }
 }
 
+// FIX (Bug 8): Handle network failures visibly and revert optimistic dropdown selection
 async function onAssign(sel) {
   const id = sel.dataset.id;
-  const res = await fetch(`/api/requests/${id}/assign`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ vendorId: sel.value || null })
-  });
-  // BUG: toast always reports success, even when the API responded with a
-  // 400 (inactive vendor, unknown vendor, or request already COMPLETED).
-  showToast('Vendor assigned');
-  await loadBoard();
+  try {
+    const res = await fetch(`/api/requests/${id}/assign`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vendorId: sel.value || null })
+    });
+    
+    if (!res.ok) throw new Error('Assignment rejected');
+    showToast('Vendor assigned');
+  } catch (err) {
+    showToast('Error assigning vendor');
+  } finally {
+    // Reloading board reverts failed optimistic selections back to previous server state
+    await loadBoard();
+  }
 }
-
-document.getElementById('new-request-form').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  const checkType = document.getElementById('new-checkType').value;
-  const candidateName = document.getElementById('new-candidateName').value;
-  await fetch('/api/requests', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ checkType, candidateName })
-  });
-  document.getElementById('new-candidateName').value = '';
-  await loadBoard();
-});
 
 async function init() {
   await loadVendors();

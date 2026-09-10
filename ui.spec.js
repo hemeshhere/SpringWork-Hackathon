@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('UI Regression Tests', () => {
   test.beforeEach(async ({ page }) => {
     // Note: Make sure the local server is actually running first!
-    await page.goto('https://sv-qa-08-vendor-queue.onrender.com/');
+    await page.goto('http://localhost:3008');
     
     // Reset DB state before each run so tests don't step on each other
     await page.click('#reset-data-btn');

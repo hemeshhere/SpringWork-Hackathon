@@ -1,4 +1,4 @@
-const BASE_URL = 'https://sv-qa-08-vendor-queue.onrender.com';
+const BASE_URL = 'http://localhost:3008';
 let sessionCookie = '';
 
 // Quick fetch wrapper to handle our isolated session cookies automatically
